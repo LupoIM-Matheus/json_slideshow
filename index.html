@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TV Power BI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="stage" aria-live="polite">
+    <iframe
+      id="reportFrame"
+      title="Relatorio Power BI"
+      referrerpolicy="no-referrer"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
+      allowfullscreen>
+    </iframe>
+
+    <button id="refreshConfigButton" type="button">Atualizar JSON</button>
+
+    <section id="startOverlay">
+      <h1>TV Power BI</h1>
+      <div id="configPanel">
+        <label for="configUrl">URL raw do JSON no GitHub</label>
+        <input id="configUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://raw.githubusercontent.com/usuario/repositorio/branch/reports.json">
+        <button id="loadUrlButton" type="button">Carregar URL</button>
+
+        <label for="configFile">Arquivo JSON local</label>
+        <input id="configFile" type="file" accept="application/json,.json">
+        <div id="configActions">
+          <button id="loadConfigButton" type="button">Carregar arquivo</button>
+          <button id="clearConfigButton" type="button">Limpar configuracao</button>
+        </div>
+        <p id="configStatus" role="status"></p>
+      </div>
+      <button id="startButton" type="button" disabled>Iniciar tela cheia</button>
+      <p>Use perfil kiosk dedicado, autenticado no Power BI.</p>
+    </section>
+
+    <div id="statusBar">
+      <span id="reportName"></span>
+      <span id="timer"></span>
+    </div>
+  </main>
+
+<script src="app.js"></script>
+</body>
+</html>
