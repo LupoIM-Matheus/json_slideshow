@@ -2,12 +2,20 @@
   "displaySeconds": 30,
   "reports": [
     {
-      "name": "Nome do Relatório",
-      "url": "https://app.powerbi.com/reportEmbed?reportId=YOUR_REPORT_ID&autoAuth=true&ctid=YOUR_TENANT_ID"
+        "name": "Acompanhamento Comercial",
+        "url": "https://app.powerbi.com/reportEmbed?reportId=d6162aa7-dedb-4e20-878a-4f469741bf66&autoAuth=true&ctid=8f2221af-8862-4df1-b8fb-53ab2c7c0607"
     },
     {
-      "name": "Outro Relatório",
-      "url": "https://app.powerbi.com/reportEmbed?reportId=YOUR_REPORT_ID&autoAuth=true&ctid=YOUR_TENANT_ID"
+        "name": "Batida",
+        "url": "https://app.powerbi.com/reportEmbed?reportId=8408be3f-e611-4185-bbc7-fbd3aeca30e3&autoAuth=true&ctid=8f2221af-8862-4df1-b8fb-53ab2c7c0607"
+    },
+    {
+        "name": "Entrada de Pedidos",
+        "url": "https://app.powerbi.com/reportEmbed?reportId=5f23a717-48d3-401c-bb46-03f3b873962e&autoAuth=true&ctid=8f2221af-8862-4df1-b8fb-53ab2c7c0607"
+    },
+    {
+        "name": "Faturamento",
+        "url": "https://app.powerbi.com/reportEmbed?reportId=d6cfabab-8218-4556-9c2b-72d4995ee74b&autoAuth=true&ctid=8f2221af-8862-4df1-b8fb-53ab2c7c0607"
     }
   ]
 }
