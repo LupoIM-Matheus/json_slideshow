@@ -16,6 +16,14 @@
     {
         "name": "Faturamento",
         "url": "https://app.powerbi.com/reportEmbed?reportId=d6cfabab-8218-4556-9c2b-72d4995ee74b&autoAuth=true&ctid=8f2221af-8862-4df1-b8fb-53ab2c7c0607"
+    },
+    {
+        "name": "Metas Consultoria - Regional",
+        "url": "https://app.powerbi.com/groups/me/reports/db047eb5-6587-4036-a16d-32c8c7de609f/1f7f18367c3288d60777?ctid=8f2221af-8862-4df1-b8fb-53ab2c7c0607&experience=power-bi"
+    },
+    {
+        "name":"Same Store Sales",
+        "url": "https://app.powerbi.com/groups/me/reports/db047eb5-6587-4036-a16d-32c8c7de609f/857b56e7fc8776a3c119?ctid=8f2221af-8862-4df1-b8fb-53ab2c7c0607&experience=power-bi"
     }
   ]
 }
