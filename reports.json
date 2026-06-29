@@ -1,5 +1,6 @@
 {
   "displaySeconds": 60,
+  "refreshMinutes": 60,
   "reports": [
     {
         "name": "Acompanhamento Comercial",

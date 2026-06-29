@@ -7,34 +7,49 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main id="stage" aria-live="polite">
-    <iframe
-      id="reportFrame"
-      title="Relatorio Power BI"
-      referrerpolicy="no-referrer"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
-      allowfullscreen>
-    </iframe>
+  <main id="stage" aria-live="polite">
+    <div id="frameDeck"></div>
 
     <button id="refreshConfigButton" type="button">Atualizar JSON</button>
 
     <section id="startOverlay">
-      <h1>TV Power BI</h1>
-      <div id="configPanel">
-        <label for="configUrl">URL raw do JSON no GitHub</label>
-        <input id="configUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://raw.githubusercontent.com/usuario/repositorio/branch/reports.json">
-        <button id="loadUrlButton" type="button">Carregar URL</button>
+      <div id="launcher">
+        <aside id="brandPanel" aria-label="Resumo">
+          <span id="brandMark">TV BI</span>
+          <h1>Paineis em tela cheia</h1>
+          <div id="quickStats">
+            <div>
+              <strong id="loadedCount">0</strong>
+              <span>relatorios</span>
+            </div>
+            <div>
+              <strong id="rotationSeconds">30s</strong>
+              <span>rotacao</span>
+            </div>
+          </div>
+        </aside>
 
-        <label for="configFile">Arquivo JSON local</label>
-        <input id="configFile" type="file" accept="application/json,.json">
-        <div id="configActions">
-          <button id="loadConfigButton" type="button">Carregar arquivo</button>
-          <button id="clearConfigButton" type="button">Limpar configuracao</button>
+        <div id="configPanel">
+          <label for="configUrl">URL raw do JSON</label>
+          <div class="inlineLoad">
+            <input id="configUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://raw.githubusercontent.com/usuario/repositorio/branch/reports.json">
+            <button id="loadUrlButton" type="button">Carregar</button>
+          </div>
+
+          <label for="configFile">Arquivo JSON local</label>
+          <div id="fileLoad">
+            <input id="configFile" type="file" accept="application/json,.json">
+            <button id="loadConfigButton" type="button">Importar</button>
+          </div>
+
+          <div id="configActions">
+            <button id="clearConfigButton" type="button">Limpar</button>
+            <button id="startButton" type="button" disabled>Iniciar tela cheia</button>
+          </div>
+
+          <p id="configStatus" role="status"></p>
         </div>
-        <p id="configStatus" role="status"></p>
       </div>
-      <button id="startButton" type="button" disabled>Iniciar tela cheia</button>
-      <p>Use perfil kiosk dedicado, autenticado no Power BI.</p>
     </section>
 
     <div id="statusBar">

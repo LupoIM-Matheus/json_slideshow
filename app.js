@@ -1,17 +1,26 @@
 const STORAGE_KEY = "tvPowerBiReports:v1";
 const SOURCE_URL_KEY = "tvPowerBiReportsUrl:v1";
 const DEFAULT_DISPLAY_SECONDS = 30;
+const DEFAULT_REFRESH_MINUTES = 60;
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_REPORTS = 200;
 const MAX_NAME_LENGTH = 80;
 const MIN_DISPLAY_SECONDS = 5;
 const MAX_DISPLAY_SECONDS = 3600;
+const MIN_REFRESH_MINUTES = 5;
+const MAX_REFRESH_MINUTES = 1440;
 const POWER_BI_HOST = "app.powerbi.com";
-const POWER_BI_PATH = "/reportEmbed";
+const POWER_BI_EMBED_PATH = "/reportEmbed";
+const POWER_BI_SERVICE_FULLSCREEN_PARAM = ["chromeless", "1"];
+const POWER_BI_EMBED_FULLSCREEN_PARAMS = [
+  ["filterPaneEnabled", "false"],
+  ["navContentPaneEnabled", "false"],
+];
+const POWER_BI_PUBLISH_PATH = "/view";
 const GITHUB_RAW_HOST = "raw.githubusercontent.com";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const frame = document.getElementById("reportFrame");
+const frameDeck = document.getElementById("frameDeck");
 const reportName = document.getElementById("reportName");
 const timer = document.getElementById("timer");
 const overlay = document.getElementById("startOverlay");
@@ -24,11 +33,15 @@ const loadConfigButton = document.getElementById("loadConfigButton");
 const clearConfigButton = document.getElementById("clearConfigButton");
 const configStatus = document.getElementById("configStatus");
 const configPanel = document.getElementById("configPanel");
+const loadedCount = document.getElementById("loadedCount");
+const rotationSeconds = document.getElementById("rotationSeconds");
 
 let config = null;
 let currentIndex = 0;
 let remaining = DEFAULT_DISPLAY_SECONDS;
 let timerId = null;
+let refreshTimerId = null;
+let reportFrames = [];
 
 function fail(message) {
   throw new Error(message);
@@ -108,7 +121,7 @@ function sanitizeReportUrl(rawUrl) {
 
   let url;
   try {
-    url = new URL(rawUrl);
+    url = new URL(rawUrl.trim());
   } catch {
     fail("URL invalida");
   }
@@ -116,7 +129,6 @@ function sanitizeReportUrl(rawUrl) {
   if (
     url.protocol !== "https:" ||
     url.hostname !== POWER_BI_HOST ||
-    url.pathname !== POWER_BI_PATH ||
     url.username ||
     url.password ||
     url.hash
@@ -124,17 +136,76 @@ function sanitizeReportUrl(rawUrl) {
     fail("URL fora do Power BI permitido");
   }
 
-  const reportId = url.searchParams.get("reportId");
   const tenantId = url.searchParams.get("ctid");
+  if (tenantId && !UUID_PATTERN.test(tenantId)) {
+    fail("ctid invalido");
+  }
+
+  if (isPowerBiEmbedUrl(url)) {
+    return normalizePowerBiEmbedUrl(url);
+  }
+
+  if (isPowerBiServiceReportUrl(url)) {
+    return normalizePowerBiServiceReportUrl(url);
+  }
+
+  if (isPowerBiPublishUrl(url)) {
+    return normalizePowerBiServiceReportUrl(url);
+  }
+
+  fail("Formato de URL Power BI nao permitido");
+}
+
+function isPowerBiEmbedUrl(url) {
+  const reportId = url.searchParams.get("reportId");
+
+  if (url.pathname !== POWER_BI_EMBED_PATH) {
+    return false;
+  }
 
   if (!reportId || !UUID_PATTERN.test(reportId)) {
     fail("reportId invalido");
   }
 
-  if (!tenantId || !UUID_PATTERN.test(tenantId)) {
-    fail("ctid invalido");
+  return true;
+}
+
+function isPowerBiServiceReportUrl(url) {
+  const pathParts = url.pathname.split("/").filter(Boolean);
+
+  if (
+    pathParts[0] === "groups" &&
+    (pathParts[1] === "me" || UUID_PATTERN.test(pathParts[1])) &&
+    (pathParts[2] === "reports" || pathParts[2] === "rdlreports") &&
+    UUID_PATTERN.test(pathParts[3])
+  ) {
+    return true;
   }
 
+  if (
+    (pathParts[0] === "reports" || pathParts[0] === "rdlreports") &&
+    UUID_PATTERN.test(pathParts[1])
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function isPowerBiPublishUrl(url) {
+  return url.pathname === POWER_BI_PUBLISH_PATH && Boolean(url.searchParams.get("r"));
+}
+
+function normalizePowerBiEmbedUrl(url) {
+  for (const [key, value] of POWER_BI_EMBED_FULLSCREEN_PARAMS) {
+    url.searchParams.set(key, value);
+  }
+
+  return url.toString();
+}
+
+function normalizePowerBiServiceReportUrl(url) {
+  url.searchParams.set(...POWER_BI_SERVICE_FULLSCREEN_PARAM);
   return url.toString();
 }
 
@@ -154,9 +225,29 @@ function sanitizeDisplaySeconds(value) {
   return value;
 }
 
+function sanitizeRefreshMinutes(value) {
+  if (value === undefined) {
+    return DEFAULT_REFRESH_MINUTES;
+  }
+
+  if (
+    !Number.isInteger(value) ||
+    value < MIN_REFRESH_MINUTES ||
+    value > MAX_REFRESH_MINUTES
+  ) {
+    fail("refreshMinutes invalido");
+  }
+
+  return value;
+}
+
 function validateConfig(value) {
   assertPlainObject(value, "JSON raiz invalido");
-  assertAllowedKeys(value, ["displaySeconds", "reports"], "Campo raiz nao permitido");
+  assertAllowedKeys(
+    value,
+    ["displaySeconds", "refreshMinutes", "reports"],
+    "Campo raiz nao permitido"
+  );
 
   if (!Array.isArray(value.reports) || value.reports.length === 0) {
     fail("Lista de relatorios vazia");
@@ -168,6 +259,7 @@ function validateConfig(value) {
 
   return {
     displaySeconds: sanitizeDisplaySeconds(value.displaySeconds),
+    refreshMinutes: sanitizeRefreshMinutes(value.refreshMinutes),
     reports: value.reports.map((report) => {
       assertPlainObject(report, "Relatorio invalido");
       assertAllowedKeys(report, ["name", "url"], "Campo de relatorio nao permitido");
@@ -204,12 +296,20 @@ function stopRotation() {
     window.clearInterval(timerId);
     timerId = null;
   }
+
+  if (refreshTimerId) {
+    window.clearInterval(refreshTimerId);
+    refreshTimerId = null;
+  }
 }
 
-function clearFrame() {
-  frame.removeAttribute("src");
+function clearFrames() {
+  frameDeck.replaceChildren();
+  reportFrames = [];
   reportName.textContent = "";
   timer.textContent = "";
+  loadedCount.textContent = "0";
+  rotationSeconds.textContent = `${DEFAULT_DISPLAY_SECONDS}s`;
 }
 
 function setNoConfig(message) {
@@ -218,7 +318,7 @@ function setNoConfig(message) {
   config = null;
   currentIndex = 0;
   remaining = DEFAULT_DISPLAY_SECONDS;
-  clearFrame();
+  clearFrames();
   startButton.disabled = true;
   overlay.classList.remove("hidden");
   setStatus(message);
@@ -232,6 +332,76 @@ function saveSourceUrl(url) {
   localStorage.setItem(SOURCE_URL_KEY, url);
 }
 
+function createReportFrame(report, index, loadImmediately = true) {
+  const reportFrame = document.createElement("iframe");
+  reportFrame.className = "report-frame";
+  reportFrame.title = report.name;
+  reportFrame.referrerPolicy = "no-referrer";
+  reportFrame.sandbox =
+    "allow-scripts allow-same-origin allow-forms allow-popups allow-downloads";
+  reportFrame.allowFullscreen = true;
+  reportFrame.dataset.index = String(index);
+  if (loadImmediately) {
+    reportFrame.src = report.url;
+  }
+  return reportFrame;
+}
+
+function preloadReports(nextConfig) {
+  frameDeck.replaceChildren();
+  reportFrames = nextConfig.reports.map(createReportFrame);
+  frameDeck.append(...reportFrames);
+  loadedCount.textContent = String(nextConfig.reports.length);
+  rotationSeconds.textContent = `${nextConfig.displaySeconds}s`;
+}
+
+function refreshReportFrame(index) {
+  if (!config || !reportFrames[index]) {
+    return;
+  }
+
+  const oldFrame = reportFrames[index];
+  const nextFrame = createReportFrame(config.reports[index], index, false);
+
+  nextFrame.addEventListener(
+    "load",
+    () => {
+      if (reportFrames[index] !== oldFrame) {
+        nextFrame.remove();
+        return;
+      }
+
+      const isActive = currentIndex === index;
+      nextFrame.classList.toggle("active", isActive);
+      reportFrames[index] = nextFrame;
+      oldFrame.remove();
+    },
+    { once: true }
+  );
+
+  oldFrame.insertAdjacentElement("afterend", nextFrame);
+  nextFrame.src = config.reports[index].url;
+}
+
+function refreshReports() {
+  if (!config) {
+    return;
+  }
+
+  config.reports.forEach((_, index) => refreshReportFrame(index));
+}
+
+function startScheduledRefresh() {
+  if (!config) {
+    return;
+  }
+
+  refreshTimerId = window.setInterval(
+    refreshReports,
+    config.refreshMinutes * 60 * 1000
+  );
+}
+
 function showReport(index) {
   if (!config) {
     return;
@@ -240,7 +410,9 @@ function showReport(index) {
   const report = config.reports[index % config.reports.length];
   currentIndex = index % config.reports.length;
   remaining = config.displaySeconds;
-  frame.src = report.url;
+  reportFrames.forEach((reportFrame, frameIndex) => {
+    reportFrame.classList.toggle("active", frameIndex === currentIndex);
+  });
   reportName.textContent = report.name;
   timer.textContent = `${remaining}s`;
 }
@@ -274,8 +446,10 @@ function startRotation(nextConfig, message, hideConfigPanel = false) {
   currentIndex = 0;
   remaining = config.displaySeconds;
   startButton.disabled = false;
+  preloadReports(config);
   showReport(0);
   timerId = window.setInterval(tick, 1000);
+  startScheduledRefresh();
   setStatus(message);
 }
 
@@ -300,7 +474,7 @@ function loadStoredConfig() {
   }
 
   try {
-    startRotation(parseConfigText(storedConfig), "Configuracao local carregada.", true);
+    startRotation(parseConfigText(storedConfig), "Configuracao local carregada.");
   } catch {
     localStorage.removeItem(STORAGE_KEY);
     setNoConfig("Configuracao salva era invalida e foi removida.");
